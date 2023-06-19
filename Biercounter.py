@@ -10,15 +10,13 @@
 
 import RPi.GPIO as GPIO
 import tkinter as tk
-import time
+import time, csv, datetime
 
-#test
+BIERDATEI = '/home/jgrundmann/Biermenge.txt'
+FASSLOG = '/home/jgrundmann/Fasslog.csv'
+
 #Datei für Biermenge initial mit 0 befüllen
-datei = open('/home/jgrundmann/Biermenge.txt','r+')
-datei.truncate(0)
-datei.write('0')
-datei.close()
-
+zapfen(0, log_schreiben = False)
 
 #Pin-Setup
 GPIO.setmode(GPIO.BCM)
@@ -44,35 +42,54 @@ liter.place(x=950, y=600)
 
 #CallbackFunktion, die auf Input-Pins schaut und Wert in Datei sowie Label für Biermenge aktualisiert
 def update_bier():
-    datei = open('/home/jgrundmann/Biermenge.txt','r+')
-    biermenge = int(datei.read())
-    print(biermenge)
-    datei.close()
-   
-    #global Biercounter
+    biermenge = lese_biermenge()
+
+    #Pilzknopp wird gedrückt -> 50L wurden gezapft
     if GPIO.input(23) == 0:
         biermenge+=50
-        datei = open('/home/jgrundmann/Biermenge.txt','r+')
-        datei.truncate(0)
-        datei.write(str(biermenge))
-        datei.close()
+        zapfen(biermenge)
         time.sleep(1) #Entprellen des Tasters und Vermeidung von zu schnellem Hochzählen
         
+    #Miniknopp wird gedrückt, -> Wert um 50L nach unten korrigieren
     if GPIO.input(24) == 0:      
-        if biermenge > 0:  # Keine negativen Werte möglich
-            biermenge-=50
-            datei = open('/home/jgrundmann/Biermenge.txt','r+')
-            datei.truncate(0)
-            datei.write(str(biermenge))
-            datei.close()
+        biermenge-=50
+        zapfen(biermenge)
         time.sleep(1) #Entprellen des Tasters und Vermeidung von zu schnellem Hochzählen
             
     status_biermenge["text"] = biermenge       
     root.after(1, update_bier) #rekursiver Aufruf der Funktion
+
+def lese_biermenge():
+    with open(BIERDATEI, 'r') as datei:
+        biermenge = int(datei.read())
+        datei.close()
+
+    return biermenge
+
+#Speichert die Biermenge in BIERDATEI und im FASSLOG
+def zapfen(biermenge, log_schreiben = True):
+    if biermenge < 0:  # Keine negativen Werte möglich
+        return
+
+    with open(BIERDATEI, 'w') as datei:
+        datei.truncate(0)
+        datei.write(str(biermenge))
+        datei.close()
+
+    if log_schreiben:
+        jetzt = datetime.datetime.now().strftime('%Y-%m-%d %H:%i:%s')
+        log_fass(jetzt, biermenge)
+
+#Schreibt einen neuen Eintrag mit Zeit und Biermenge ins FASSLOG
+def log_fass(zeit, biermenge):
+    with open(FASSLOG, 'a', newline='') as datei:
+        fasslog = csv.writer(datei)
+        fasslog.writerow([zeit, biermenge])
+        datei.close()
     
 root.after(1, update_bier) #Aufruf der rekursiven update_bier-Funktion
 root.mainloop()
-    
+
 
 
 
