@@ -1,10 +1,9 @@
 <?php
 
-#const BIERDATEI = '/home/jgrundmann/Biermenge.txt';
-const BIERDATEI = '/tmp/bier';
+$bierdatei = $_ENV['BIERDATEI'] ?? '/home/jgrundmann/Biermenge.txt';
 
-$bierstand = file_get_contents(BIERDATEI);
-$speichere = static fn(string $menge) => file_put_contents(BIERDATEI, $menge);
+$bierstand = file_get_contents($bierdatei);
+$speichere = static fn(string $menge) => file_put_contents($bierdatei, $menge);
 
 $biermengeAusEingabe = static function (?array $postVars): ?int {
     $beerInLiter = (int)$postVars['biermenge'];
